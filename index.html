@@ -1,0 +1,982 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Discovery Call Tracker — Qapita BDR Team</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
+<style>
+:root {
+  --bg: #F5F4F1;
+  --card-bg: #FFFFFF;
+  --border: #E4E2DC;
+  --text-primary: #111111;
+  --text-muted: #6B7280;
+  --font-body: 'DM Sans', sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+  /* Status colours */
+  --scheduled-bg: #EFF6FF; --scheduled-text: #1D4ED8;
+  --sal-bg: #DCFCE7; --sal-text: #166534;
+  --dq-bg: #FEE2E2; --dq-text: #991B1B;
+  --noshow-bg: #FEF3C7; --noshow-text: #92400E;
+  --declined-bg: #F3F4F6; --declined-text: #374151;
+  --missing-bg: #FFEDD5; --missing-text: #9A3412;
+  --other-bg: #E5E7EB; --other-text: #6B7280;
+  --rescheduled-bg: #F3E8FF; --rescheduled-text: #7C3AED;
+  --lto-bg: #CCFBF1; --lto-text: #0F766E;
+  --prequal-bg: #EDE9FE; --prequal-text: #5B21B6;
+  --row-alt: #FAFAF9;
+  --row-hover: #EFF6FF;
+  --today-border: #3B82F6;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: var(--font-body);
+  background: var(--bg);
+  color: var(--text-primary);
+  line-height: 1.5;
+  padding: 0;
+}
+.container { max-width: 1340px; margin: 0 auto; padding: 24px 20px 60px; }
+
+/* Loading & Error */
+#loading-screen {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  min-height: 60vh; gap: 16px;
+}
+#loading-screen .spinner {
+  width: 40px; height: 40px; border: 3px solid var(--border);
+  border-top-color: var(--scheduled-text); border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+#loading-screen p { color: var(--text-muted); font-size: 14px; }
+#error-banner {
+  display: none; background: var(--dq-bg); color: var(--dq-text);
+  padding: 16px 20px; border-radius: 10px; margin-bottom: 20px;
+  font-size: 14px; border: 1px solid #FECACA;
+}
+
+/* Header */
+.dash-header {
+  background: var(--card-bg); border: 1px solid var(--border);
+  border-radius: 14px; padding: 28px 32px 20px; margin-bottom: 24px;
+}
+.dash-header h1 {
+  font-size: 26px; font-weight: 700; letter-spacing: -0.5px;
+  display: flex; align-items: center; gap: 12px;
+}
+.dash-header h1 .icon { font-size: 28px; }
+.dash-header .subtitle {
+  font-size: 14px; color: var(--text-muted); margin-top: 4px;
+}
+.dash-header .meta-row {
+  display: flex; align-items: center; gap: 20px; margin-top: 14px;
+  flex-wrap: wrap;
+}
+.dash-header .meta-row span {
+  font-size: 12px; color: var(--text-muted);
+  font-family: var(--font-mono);
+}
+.legend {
+  display: flex; flex-wrap: wrap; gap: 10px; margin-top: 14px;
+  padding-top: 14px; border-top: 1px solid var(--border);
+}
+.legend-item {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-size: 11px; color: var(--text-muted);
+}
+.legend-dot {
+  width: 10px; height: 10px; border-radius: 3px; flex-shrink: 0;
+}
+.refresh-btn {
+  background: var(--scheduled-bg); color: var(--scheduled-text);
+  border: 1px solid #BFDBFE; border-radius: 8px;
+  padding: 6px 14px; font-size: 12px; font-family: var(--font-body);
+  font-weight: 600; cursor: pointer; transition: all 0.15s;
+}
+.refresh-btn:hover { background: #DBEAFE; }
+
+/* Section */
+.section {
+  background: var(--card-bg); border: 1px solid var(--border);
+  border-radius: 14px; padding: 24px 28px; margin-bottom: 24px;
+}
+.section-header {
+  display: flex; align-items: center; gap: 12px; margin-bottom: 6px;
+}
+.section-num {
+  width: 30px; height: 30px; border-radius: 50%;
+  background: var(--text-primary); color: #fff;
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--font-mono); font-size: 13px; font-weight: 700;
+  flex-shrink: 0;
+}
+.section-title { font-size: 18px; font-weight: 700; }
+.section-desc {
+  font-size: 13px; color: var(--text-muted); margin-bottom: 18px;
+  margin-left: 42px;
+}
+.section-count-badge {
+  font-family: var(--font-mono); font-size: 12px; font-weight: 600;
+  background: var(--scheduled-bg); color: var(--scheduled-text);
+  padding: 2px 10px; border-radius: 20px; margin-left: 8px;
+}
+
+/* Stat Cards */
+.stat-cards {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(145px, 1fr));
+  gap: 12px; margin-bottom: 18px;
+}
+.stat-card {
+  background: var(--card-bg); border: 1px solid var(--border);
+  border-radius: 10px; padding: 14px 16px;
+  border-top: 3px solid var(--border); position: relative;
+}
+.stat-card .label {
+  font-size: 11px; color: var(--text-muted); font-weight: 500;
+  text-transform: uppercase; letter-spacing: 0.5px;
+}
+.stat-card .value {
+  font-family: var(--font-mono); font-size: 28px; font-weight: 700;
+  margin-top: 4px; line-height: 1;
+}
+.stat-card .pct {
+  font-family: var(--font-mono); font-size: 11px; color: var(--text-muted);
+  margin-top: 4px;
+}
+.funnel-row {
+  font-family: var(--font-mono); font-size: 13px; color: var(--text-muted);
+  padding: 12px 16px; background: var(--row-alt); border-radius: 8px;
+  overflow-x: auto; white-space: nowrap;
+}
+
+/* Tables */
+.table-wrap { overflow-x: auto; margin-top: 10px; border-radius: 8px; border: 1px solid var(--border); }
+table {
+  width: 100%; border-collapse: collapse; font-size: 13px;
+  min-width: 700px;
+}
+thead th {
+  background: #F9FAFB; border-bottom: 2px solid var(--border);
+  padding: 10px 12px; text-align: left; font-weight: 600;
+  font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px;
+  color: var(--text-muted); position: sticky; top: 0; z-index: 2;
+  cursor: pointer; user-select: none; white-space: nowrap;
+}
+thead th:hover { color: var(--text-primary); }
+thead th .sort-arrow { font-size: 10px; margin-left: 3px; opacity: 0.4; }
+thead th.sorted .sort-arrow { opacity: 1; }
+tbody td {
+  padding: 10px 12px; border-bottom: 1px solid #F3F4F6;
+  vertical-align: top;
+}
+tbody tr:nth-child(odd) { background: var(--row-alt); }
+tbody tr:hover { background: var(--row-hover); }
+tbody tr.row-today { border-left: 3px solid var(--today-border); }
+tbody tr.row-missing { background: #FFF7ED; }
+.prospect-name { font-weight: 600; font-size: 13px; }
+.prospect-company { font-size: 11px; color: var(--text-muted); }
+.mono { font-family: var(--font-mono); font-size: 12px; }
+.notes-cell {
+  max-width: 220px; font-size: 12px; color: var(--text-muted);
+  cursor: pointer; position: relative;
+}
+.notes-cell.truncated::after { content: '...'; }
+.notes-cell.expanded { max-width: none; white-space: normal; }
+
+/* Status badge */
+.badge {
+  display: inline-block; padding: 3px 10px; border-radius: 20px;
+  font-size: 11px; font-weight: 600; white-space: nowrap;
+  font-family: var(--font-mono);
+}
+.badge-scheduled { background: var(--scheduled-bg); color: var(--scheduled-text); }
+.badge-sal { background: var(--sal-bg); color: var(--sal-text); }
+.badge-dq { background: var(--dq-bg); color: var(--dq-text); }
+.badge-noshow { background: var(--noshow-bg); color: var(--noshow-text); }
+.badge-declined { background: var(--declined-bg); color: var(--declined-text); }
+.badge-missing { background: var(--missing-bg); color: var(--missing-text); }
+.badge-rescheduled { background: var(--rescheduled-bg); color: var(--rescheduled-text); }
+.badge-lto { background: var(--lto-bg); color: var(--lto-text); }
+.badge-prequal { background: var(--prequal-bg); color: var(--prequal-text); }
+.badge-other { background: var(--other-bg); color: var(--other-text); }
+.badge-today {
+  background: #DBEAFE; color: #1E40AF;
+  font-size: 10px; padding: 2px 7px; margin-left: 6px;
+}
+.badge-dup {
+  background: #FEF3C7; color: #92400E;
+  font-size: 10px; padding: 2px 7px; margin-left: 4px;
+}
+
+/* Filter bar */
+.filter-bar {
+  display: flex; flex-wrap: wrap; gap: 10px; align-items: center;
+  margin-bottom: 12px; padding: 12px 16px;
+  background: var(--row-alt); border-radius: 8px;
+}
+.filter-bar select, .filter-bar input[type="text"], .filter-bar input[type="date"] {
+  font-family: var(--font-body); font-size: 13px;
+  padding: 7px 12px; border: 1px solid var(--border); border-radius: 6px;
+  background: #fff; color: var(--text-primary);
+}
+.filter-bar select { min-width: 130px; }
+.filter-bar input[type="text"] { min-width: 170px; }
+.filter-bar label { font-size: 11px; color: var(--text-muted); font-weight: 500; }
+.filter-group { display: flex; flex-direction: column; gap: 3px; }
+.reset-btn {
+  font-family: var(--font-body); font-size: 12px; font-weight: 600;
+  padding: 7px 16px; border-radius: 6px; border: 1px solid var(--border);
+  background: #fff; cursor: pointer; color: var(--text-muted);
+}
+.reset-btn:hover { background: var(--dq-bg); color: var(--dq-text); }
+.row-count { font-family: var(--font-mono); font-size: 12px; color: var(--text-muted); margin-left: auto; }
+
+/* BDR Table highlights */
+.cell-best { background: #DCFCE7; }
+.cell-worst { background: #FEE2E2; }
+
+/* Charts */
+.chart-container { position: relative; margin-top: 16px; }
+.chart-row {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-top: 16px;
+}
+.chart-box {
+  background: var(--row-alt); border-radius: 10px; padding: 20px;
+  border: 1px solid var(--border);
+}
+.chart-box h4 { font-size: 13px; font-weight: 600; margin-bottom: 12px; }
+
+/* Empty state */
+.empty-state {
+  text-align: center; padding: 36px 20px;
+  color: var(--text-muted); font-size: 14px;
+}
+.empty-state.warning {
+  background: var(--noshow-bg); border-radius: 8px;
+  color: var(--noshow-text); font-weight: 500;
+}
+
+/* Footer */
+.dash-footer {
+  text-align: center; padding: 20px;
+  font-size: 11px; color: var(--text-muted);
+  border-top: 1px solid var(--border); margin-top: 10px;
+}
+
+/* Responsive */
+@media (max-width: 900px) {
+  .stat-cards { grid-template-columns: repeat(2, 1fr); }
+  .chart-row { grid-template-columns: 1fr; }
+  .container { padding: 12px 10px 40px; }
+  .section { padding: 16px 14px; }
+}
+</style>
+</head>
+<body>
+<div class="container">
+  <!-- Loading -->
+  <div id="loading-screen">
+    <div class="spinner"></div>
+    <p>Fetching live data from Google Sheet...</p>
+  </div>
+  <div id="error-banner"></div>
+  <!-- Dashboard content rendered by JS -->
+  <div id="dashboard" style="display:none;"></div>
+</div>
+
+<script>
+const CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSoVsOY11e7lMohipmKfIGb8zUSZxm1mG9pMrthAnX2a4ekpbe9tCOkSWpZFaETtXsEbusQXguYocDe/pub?gid=1598191109&single=true&output=csv';
+
+// Column mapping
+const COL = {
+  sdr: 'SDR',
+  company: 'Company Name',
+  prospect: 'Prospect Name',
+  role: 'Prospect Role',
+  dcDate: 'DC Date',
+  meetingTime: 'Meeting Time',
+  bookedDate: 'Booked Date',
+  ae: 'AE/Owner',
+  status: 'DC Status',
+  summary: 'Summary of Call',
+  nextSteps: 'Next Steps'
+};
+
+// Status config
+const STATUS_MAP = {
+  'scheduled': { label: 'Scheduled', cls: 'badge-scheduled', key: 'scheduled' },
+  'sales accepted': { label: 'Sales Accepted', cls: 'badge-sal', key: 'sal' },
+  'dqed': { label: 'DQed', cls: 'badge-dq', key: 'dq' },
+  'declined/no-show': { label: 'Declined/No-show', cls: 'badge-noshow', key: 'noshow' },
+  'rescheduled': { label: 'Rescheduled', cls: 'badge-rescheduled', key: 'rescheduled' },
+  'lto': { label: 'LTO', cls: 'badge-lto', key: 'lto' },
+  'pre-qal': { label: 'Pre-Qal', cls: 'badge-prequal', key: 'prequal' },
+};
+
+const STATUS_COLORS = {
+  scheduled: { bg: '#EFF6FF', text: '#1D4ED8', fill: '#3B82F6' },
+  sal: { bg: '#DCFCE7', text: '#166534', fill: '#22C55E' },
+  dq: { bg: '#FEE2E2', text: '#991B1B', fill: '#EF4444' },
+  noshow: { bg: '#FEF3C7', text: '#92400E', fill: '#F59E0B' },
+  declined: { bg: '#F3F4F6', text: '#374151', fill: '#9CA3AF' },
+  missing: { bg: '#FFEDD5', text: '#9A3412', fill: '#F97316' },
+  rescheduled: { bg: '#F3E8FF', text: '#7C3AED', fill: '#A78BFA' },
+  lto: { bg: '#CCFBF1', text: '#0F766E', fill: '#2DD4BF' },
+  prequal: { bg: '#EDE9FE', text: '#5B21B6', fill: '#8B5CF6' },
+  other: { bg: '#E5E7EB', text: '#6B7280', fill: '#9CA3AF' },
+};
+
+// Helpers
+function parseCSV(text) {
+  const lines = [];
+  let current = '';
+  let inQuotes = false;
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if (ch === '"') {
+      if (inQuotes && text[i+1] === '"') { current += '"'; i++; }
+      else { inQuotes = !inQuotes; }
+    } else if (ch === ',' && !inQuotes) {
+      lines.push(current); current = '';
+    } else if ((ch === '\n' || ch === '\r') && !inQuotes) {
+      if (ch === '\r' && text[i+1] === '\n') i++;
+      lines.push(current); current = '';
+      // Row break marker
+      lines.push('\n');
+    } else {
+      current += ch;
+    }
+  }
+  if (current) lines.push(current);
+
+  // Reconstruct rows
+  const rows = [];
+  let row = [];
+  for (const cell of lines) {
+    if (cell === '\n') {
+      if (row.length > 0) rows.push(row);
+      row = [];
+    } else {
+      row.push(cell.trim());
+    }
+  }
+  if (row.length > 0) rows.push(row);
+  return rows;
+}
+
+function parseDate(str) {
+  if (!str || !str.trim()) return null;
+  str = str.trim();
+  // Try DD/MM/YYYY or DD-MM-YYYY
+  let m = str.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
+  if (m) {
+    const d = new Date(parseInt(m[3]), parseInt(m[2])-1, parseInt(m[1]));
+    if (!isNaN(d.getTime())) return d;
+  }
+  // Try YYYY-MM-DD
+  m = str.match(/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})$/);
+  if (m) {
+    const d = new Date(parseInt(m[1]), parseInt(m[2])-1, parseInt(m[3]));
+    if (!isNaN(d.getTime())) return d;
+  }
+  // Try MM/DD/YYYY
+  m = str.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
+  if (m) {
+    const d = new Date(parseInt(m[3]), parseInt(m[1])-1, parseInt(m[2]));
+    if (!isNaN(d.getTime())) return d;
+  }
+  // Fallback
+  const d = new Date(str);
+  return isNaN(d.getTime()) ? null : d;
+}
+
+function parseTime(str) {
+  if (!str || !str.trim()) return '';
+  return str.trim();
+}
+
+function getMonday(d) {
+  const dt = new Date(d);
+  const day = dt.getDay();
+  const diff = dt.getDate() - day + (day === 0 ? -6 : 1);
+  dt.setDate(diff);
+  dt.setHours(0,0,0,0);
+  return dt;
+}
+
+function getSunday(monday) {
+  const s = new Date(monday);
+  s.setDate(s.getDate() + 6);
+  s.setHours(23,59,59,999);
+  return s;
+}
+
+function formatDateShort(d) {
+  if (!d) return '—';
+  const days = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  return `${days[d.getDay()]}, ${d.getDate()} ${months[d.getMonth()]}`;
+}
+
+function formatDateRange(mon, sun) {
+  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  return `${mon.getDate()} ${months[mon.getMonth()]} — ${sun.getDate()} ${months[sun.getMonth()]} ${sun.getFullYear()}`;
+}
+
+function formatMonthYear(d) {
+  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  return `${months[d.getMonth()]} ${d.getFullYear()}`;
+}
+
+function getWeekLabel(d) {
+  if (!d) return '—';
+  const mon = getMonday(d);
+  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  return `W/c ${mon.getDate()} ${months[mon.getMonth()]}`;
+}
+
+function normalizeStatus(raw) {
+  if (!raw || !raw.trim()) return { original: '', key: 'other', label: raw || 'Unknown', cls: 'badge-other' };
+  const s = raw.trim().toLowerCase();
+  if (STATUS_MAP[s]) return { original: raw.trim(), ...STATUS_MAP[s] };
+  // Fuzzy matches
+  if (s.includes('sal') || s.includes('sales accepted')) return { original: raw.trim(), ...STATUS_MAP['sales accepted'] };
+  if (s.includes('dq')) return { original: raw.trim(), ...STATUS_MAP['dqed'] };
+  if (s.includes('decline') || s.includes('no-show') || s.includes('no show')) return { original: raw.trim(), ...STATUS_MAP['declined/no-show'] };
+  if (s.includes('reschedul')) return { original: raw.trim(), ...STATUS_MAP['rescheduled'] };
+  if (s.includes('lto')) return { original: raw.trim(), ...STATUS_MAP['lto'] };
+  if (s.includes('pre-qal') || s.includes('prequal') || s.includes('pre qal')) return { original: raw.trim(), ...STATUS_MAP['pre-qal'] };
+  if (s.includes('schedul')) return { original: raw.trim(), ...STATUS_MAP['scheduled'] };
+  return { original: raw.trim(), key: 'other', label: raw.trim(), cls: 'badge-other' };
+}
+
+function getFirstName(full) {
+  if (!full) return 'Unknown';
+  return full.trim().split(/\s+/)[0];
+}
+
+function escapeHtml(str) {
+  if (!str) return '';
+  return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function pct(n, total) {
+  if (!total) return '0';
+  return (n / total * 100).toFixed(1);
+}
+
+// Duplicate detection
+function dupKey(row) {
+  return `${(row.prospect||'').toLowerCase()}|${row.dateStr||''}|${(row.sdr||'').toLowerCase()}`;
+}
+
+// ================= MAIN =================
+async function loadDashboard() {
+  const loadingEl = document.getElementById('loading-screen');
+  const errorEl = document.getElementById('error-banner');
+  const dashEl = document.getElementById('dashboard');
+
+  try {
+    const resp = await fetch(CSV_URL);
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    const text = await resp.text();
+    const rawRows = parseCSV(text);
+    if (rawRows.length < 2) throw new Error('No data rows found in CSV');
+
+    // Map headers
+    const headers = rawRows[0];
+    const colIdx = {};
+    for (const [key, name] of Object.entries(COL)) {
+      const idx = headers.findIndex(h => h.toLowerCase().replace(/\s+/g,' ') === name.toLowerCase().replace(/\s+/g,' '));
+      colIdx[key] = idx;
+    }
+
+    // Parse data rows
+    const data = [];
+    for (let i = 1; i < rawRows.length; i++) {
+      const r = rawRows[i];
+      // Skip blank rows
+      if (r.every(c => !c.trim())) continue;
+
+      const get = (key) => colIdx[key] >= 0 && r[colIdx[key]] ? r[colIdx[key]].trim() : '';
+
+      const dateStr = get('dcDate');
+      const date = parseDate(dateStr);
+      const status = normalizeStatus(get('status'));
+
+      data.push({
+        sdr: get('sdr'),
+        company: get('company'),
+        prospect: get('prospect'),
+        role: get('role'),
+        dateStr,
+        date,
+        time: get('meetingTime'),
+        bookedDate: get('bookedDate'),
+        ae: get('ae'),
+        status,
+        summary: get('summary'),
+        nextSteps: get('nextSteps'),
+        dateError: dateStr && !date,
+        rowIndex: i
+      });
+    }
+
+    // Detect duplicates
+    const keyCounts = {};
+    data.forEach(d => { const k = dupKey(d); keyCounts[k] = (keyCounts[k]||0) + 1; });
+    data.forEach(d => { d.isDuplicate = keyCounts[dupKey(d)] > 1; });
+
+    // Date calculations
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const thisMonday = getMonday(today);
+    const thisSunday = getSunday(thisMonday);
+    const nextMonday = new Date(thisMonday); nextMonday.setDate(nextMonday.getDate() + 7);
+    const nextSunday = getSunday(nextMonday);
+
+    // Flag outcome missing
+    data.forEach(d => {
+      if (d.date && d.date < today && d.status.key === 'scheduled') {
+        d.outcomeMissing = true;
+        d.displayStatus = { label: 'Outcome Missing', cls: 'badge-missing', key: 'missing' };
+      } else {
+        d.outcomeMissing = false;
+        d.displayStatus = d.status;
+      }
+    });
+
+    // Filter helpers
+    const isThisWeek = d => d.date && d.date >= thisMonday && d.date <= thisSunday;
+    const isNextWeek = d => d.date && d.date >= nextMonday && d.date <= nextSunday;
+    const isToday = d => d.date && d.date.getTime() === today.getTime();
+    const isFuture = d => d.date && d.date >= today && d.status.key === 'scheduled';
+
+    const thisWeekCalls = data.filter(isThisWeek).sort((a,b) => (a.date||0)-(b.date||0));
+    const nextWeekCalls = data.filter(isNextWeek).sort((a,b) => (a.date||0)-(b.date||0));
+
+    // Summary counts
+    const totalBooked = data.length;
+    const countByKey = (key) => data.filter(d => d.status.key === key).length;
+    const salCount = countByKey('sal');
+    const dqCount = countByKey('dq');
+    const noshowCount = countByKey('noshow');
+    const declinedCount = countByKey('declined') + data.filter(d => d.status.key === 'noshow' && d.status.label === 'Declined/No-show').length;
+    // Recount: declined/no-show is one status
+    const decNoShowCount = data.filter(d => d.status.key === 'noshow').length;
+    const scheduledFuture = data.filter(d => isFuture(d)).length;
+    const outcomeMissingCount = data.filter(d => d.outcomeMissing).length;
+    const rescheduledCount = countByKey('rescheduled');
+    const ltoCount = countByKey('lto');
+    const prequalCount = countByKey('prequal');
+
+    // BDR list
+    const bdrSet = new Set(data.map(d => d.sdr || 'Unknown'));
+    const bdrs = [...bdrSet].sort();
+    // Check if any first names collide
+    const firstNames = {};
+    bdrs.forEach(b => {
+      const fn = getFirstName(b);
+      if (!firstNames[fn]) firstNames[fn] = [];
+      firstNames[fn].push(b);
+    });
+    const bdrDisplayName = (full) => {
+      const fn = getFirstName(full);
+      return firstNames[fn] && firstNames[fn].length > 1 ? full : fn;
+    };
+
+    // Status list for filters
+    const allStatuses = [...new Set(data.map(d => d.displayStatus.label))].sort();
+
+    // Date range
+    const validDates = data.filter(d => d.date).map(d => d.date);
+    const minDate = validDates.length ? new Date(Math.min(...validDates.map(d=>d.getTime()))) : today;
+    const maxDate = validDates.length ? new Date(Math.max(...validDates.map(d=>d.getTime()))) : today;
+
+    // Build HTML
+    let html = '';
+
+    // ===== HEADER =====
+    html += `<div class="dash-header">
+      <h1><span class="icon">📞</span> Discovery Call Tracker</h1>
+      <div class="subtitle">Qapita BDR Team — Live Dashboard</div>
+      <div class="meta-row">
+        <span>📅 Data: ${formatDateShort(minDate)} — ${formatDateShort(maxDate)}</span>
+        <span>📊 ${totalBooked} calls tracked</span>
+        <span>🔄 Last refreshed: ${now.toLocaleString('en-IN', {dateStyle:'medium',timeStyle:'short'})}</span>
+        <button class="refresh-btn" onclick="location.reload()">↻ Refresh Data</button>
+      </div>
+      <div class="legend">
+        ${Object.entries({
+          'Scheduled': 'scheduled', 'Sales Accepted': 'sal', 'DQed': 'dq',
+          'Declined/No-show': 'noshow', 'Rescheduled': 'rescheduled',
+          'LTO': 'lto', 'Pre-Qal': 'prequal', 'Outcome Missing': 'missing'
+        }).map(([label, key]) =>
+          `<span class="legend-item"><span class="legend-dot" style="background:${STATUS_COLORS[key]?.fill || '#999'}"></span>${label}</span>`
+        ).join('')}
+      </div>
+    </div>`;
+
+    // ===== SECTION 1: SUMMARY CARDS =====
+    const cards = [
+      { label: 'Total Booked', value: totalBooked, pctVal: '100', color: '--text-primary', borderColor: '#111' },
+      { label: 'This Week', value: thisWeekCalls.length, pctVal: pct(thisWeekCalls.length, totalBooked), color: '--scheduled-text', borderColor: STATUS_COLORS.scheduled.fill },
+      { label: 'Next Week', value: nextWeekCalls.length, pctVal: pct(nextWeekCalls.length, totalBooked), color: '--scheduled-text', borderColor: STATUS_COLORS.scheduled.fill },
+      { label: 'Sales Accepted', value: salCount, pctVal: pct(salCount, totalBooked), color: '--sal-text', borderColor: STATUS_COLORS.sal.fill },
+      { label: 'DQed', value: dqCount, pctVal: pct(dqCount, totalBooked), color: '--dq-text', borderColor: STATUS_COLORS.dq.fill },
+      { label: 'Declined/No-show', value: decNoShowCount, pctVal: pct(decNoShowCount, totalBooked), color: '--noshow-text', borderColor: STATUS_COLORS.noshow.fill },
+      { label: 'Rescheduled', value: rescheduledCount, pctVal: pct(rescheduledCount, totalBooked), color: '--rescheduled-text', borderColor: STATUS_COLORS.rescheduled.fill },
+      { label: 'LTO', value: ltoCount, pctVal: pct(ltoCount, totalBooked), color: '--lto-text', borderColor: STATUS_COLORS.lto.fill },
+      { label: 'Pre-Qal', value: prequalCount, pctVal: pct(prequalCount, totalBooked), color: '--prequal-text', borderColor: STATUS_COLORS.prequal.fill },
+      { label: 'Scheduled (upcoming)', value: scheduledFuture, pctVal: pct(scheduledFuture, totalBooked), color: '--scheduled-text', borderColor: STATUS_COLORS.scheduled.fill },
+      { label: 'Outcome Missing', value: outcomeMissingCount, pctVal: pct(outcomeMissingCount, totalBooked), color: '--missing-text', borderColor: STATUS_COLORS.missing.fill },
+    ];
+
+    const pendingCount = totalBooked - salCount - dqCount - decNoShowCount;
+
+    html += `<div class="section">
+      <div class="section-header"><span class="section-num">1</span><span class="section-title">At a Glance</span></div>
+      <div class="section-desc">Summary across all ${totalBooked} discovery calls in the dataset.</div>
+      <div class="stat-cards">
+        ${cards.map(c => `<div class="stat-card" style="border-top-color:${c.borderColor}">
+          <div class="label">${c.label}</div>
+          <div class="value" style="color:${c.borderColor}">${c.value}</div>
+          <div class="pct">${c.pctVal}% of all booked</div>
+        </div>`).join('')}
+      </div>
+      <div class="funnel-row">
+        Booked → ${totalBooked} &nbsp;|&nbsp; SAL → ${salCount} (${pct(salCount,totalBooked)}%) &nbsp;|&nbsp; DQed → ${dqCount} (${pct(dqCount,totalBooked)}%) &nbsp;|&nbsp; Declined/No-show → ${decNoShowCount} (${pct(decNoShowCount,totalBooked)}%) &nbsp;|&nbsp; Pending → ${pendingCount} (${pct(pendingCount,totalBooked)}%)
+      </div>
+    </div>`;
+
+    // ===== TABLE BUILDER =====
+    function buildCallTable(rows, tableId, showWeekCol = false) {
+      if (rows.length === 0) return '';
+      let t = `<div class="table-wrap"><table id="${tableId}"><thead><tr>
+        <th>Date & Time <span class="sort-arrow">↕</span></th>
+        <th>Prospect</th>
+        <th>Title / Persona</th>
+        <th>Booked By</th>
+        <th>AE / Host</th>
+        <th>Status</th>
+        ${showWeekCol ? '<th>Week</th>' : ''}
+        <th>Notes</th>
+      </tr></thead><tbody>`;
+      rows.forEach(d => {
+        const rowClass = [];
+        if (isToday(d)) rowClass.push('row-today');
+        if (d.outcomeMissing) rowClass.push('row-missing');
+        const dateDisplay = d.date ? formatDateShort(d.date) : (d.dateStr || '—');
+        const timeDisplay = d.time || '';
+        const dateTimeStr = timeDisplay ? `${dateDisplay} · ${timeDisplay}` : dateDisplay;
+        const notes = [d.summary, d.nextSteps].filter(Boolean).join(' | ');
+        const truncNotes = notes.length > 80 ? notes.substring(0, 80) : notes;
+        const isTruncated = notes.length > 80;
+        const dupNote = d.isDuplicate ? ' <span class="badge badge-dup">Possible duplicate</span>' : '';
+        const todayBadge = isToday(d) ? ' <span class="badge badge-today">Today</span>' : '';
+        const dateErrorBadge = d.dateError ? ' <span class="badge badge-missing">Date Error</span>' : '';
+
+        t += `<tr class="${rowClass.join(' ')}">
+          <td class="mono">${escapeHtml(dateTimeStr)}${todayBadge}${dateErrorBadge}</td>
+          <td><div class="prospect-name">${escapeHtml(d.prospect || '—')}</div><div class="prospect-company">${escapeHtml(d.company || '—')}</div></td>
+          <td>${escapeHtml(d.role || '—')}</td>
+          <td>${escapeHtml(bdrDisplayName(d.sdr || 'Unknown'))}</td>
+          <td>${escapeHtml(d.ae || '—')}</td>
+          <td><span class="badge ${d.displayStatus.cls}">${escapeHtml(d.displayStatus.label)}</span>${dupNote}</td>
+          ${showWeekCol ? `<td class="mono">${getWeekLabel(d.date)}</td>` : ''}
+          <td class="notes-cell ${isTruncated ? 'truncated' : ''}" onclick="this.classList.toggle('truncated');this.classList.toggle('expanded');this.innerText=this.classList.contains('expanded')?'${escapeHtml(notes).replace(/'/g,"\\'")}':'${escapeHtml(truncNotes).replace(/'/g,"\\'")}';" title="Click to expand">${escapeHtml(isTruncated ? truncNotes : notes)}${d.outcomeMissing && !notes ? 'No outcome logged yet' : ''}</td>
+        </tr>`;
+      });
+      t += '</tbody></table></div>';
+      return t;
+    }
+
+    // ===== SECTION 2: THIS WEEK =====
+    html += `<div class="section">
+      <div class="section-header"><span class="section-num">2</span><span class="section-title">This Week — ${formatDateRange(thisMonday, thisSunday)}</span>
+        <span class="section-count-badge">${thisWeekCalls.length} calls</span>
+      </div>
+      <div class="section-desc">Discovery calls scheduled to take place this week. Calls with a past date and no outcome are flagged as Outcome Missing.</div>
+      ${thisWeekCalls.length > 0 ? buildCallTable(thisWeekCalls, 'table-this-week') : '<div class="empty-state">No calls scheduled this week.</div>'}
+    </div>`;
+
+    // ===== SECTION 3: NEXT WEEK =====
+    html += `<div class="section">
+      <div class="section-header"><span class="section-num">3</span><span class="section-title">Next Week — ${formatDateRange(nextMonday, nextSunday)}</span>
+        <span class="section-count-badge">${nextWeekCalls.length} calls</span>
+      </div>
+      <div class="section-desc">Pipeline view — calls confirmed for next week. Use this to check AE prep, confirm prospect attendance, and ensure nothing falls through.</div>
+      ${nextWeekCalls.length > 0 ? buildCallTable(nextWeekCalls, 'table-next-week') : '<div class="empty-state warning">No calls booked for next week yet — pipeline risk</div>'}
+    </div>`;
+
+    // ===== SECTION 4: ALL CALLS =====
+    const allSorted = [...data].sort((a,b) => (b.date||0)-(a.date||0));
+    html += `<div class="section">
+      <div class="section-header"><span class="section-num">4</span><span class="section-title">All Discovery Calls — Complete Record</span></div>
+      <div class="section-desc">Full list of every discovery call booked, across all time. Use the filters to narrow by BDR, status, or date range.</div>
+      <div class="filter-bar" id="filter-bar">
+        <div class="filter-group">
+          <label>BDR</label>
+          <select id="filter-bdr"><option value="">All</option>${bdrs.map(b=>`<option value="${escapeHtml(b)}">${escapeHtml(bdrDisplayName(b))}</option>`).join('')}</select>
+        </div>
+        <div class="filter-group">
+          <label>Status</label>
+          <select id="filter-status"><option value="">All</option>${allStatuses.map(s=>`<option value="${escapeHtml(s)}">${escapeHtml(s)}</option>`).join('')}</select>
+        </div>
+        <div class="filter-group">
+          <label>Search</label>
+          <input type="text" id="filter-search" placeholder="Prospect or company...">
+        </div>
+        <div class="filter-group">
+          <label>From</label>
+          <input type="date" id="filter-from">
+        </div>
+        <div class="filter-group">
+          <label>To</label>
+          <input type="date" id="filter-to">
+        </div>
+        <button class="reset-btn" id="filter-reset">Reset</button>
+        <span class="row-count" id="row-count">Showing ${data.length} of ${data.length} calls</span>
+      </div>
+      <div id="all-calls-table">${buildCallTable(allSorted, 'table-all', true)}</div>
+    </div>`;
+
+    // ===== SECTION 5: PER-BDR BREAKDOWN =====
+    const bdrStats = bdrs.map(b => {
+      const rows = data.filter(d => (d.sdr || 'Unknown') === b);
+      const total = rows.length;
+      const sal = rows.filter(d => d.status.key === 'sal').length;
+      const dq = rows.filter(d => d.status.key === 'dq').length;
+      const ns = rows.filter(d => d.status.key === 'noshow').length;
+      const dec = rows.filter(d => d.status.key === 'declined').length;
+      const futSch = rows.filter(d => d.date && d.date >= today && d.status.key === 'scheduled').length;
+      const om = rows.filter(d => d.outcomeMissing).length;
+      const salRate = total > 0 ? (sal/total*100) : 0;
+      return { name: b, displayName: bdrDisplayName(b), total, sal, dq, ns, dec, futSch, om, salRate };
+    }).sort((a,b) => b.total - a.total);
+
+    const bestSalRate = Math.max(...bdrStats.filter(b=>b.total>0).map(b=>b.salRate));
+    const worstSalRate = Math.min(...bdrStats.filter(b=>b.total>0).map(b=>b.salRate));
+    const bestOM = Math.min(...bdrStats.map(b=>b.om));
+    const worstOM = Math.max(...bdrStats.map(b=>b.om));
+
+    html += `<div class="section">
+      <div class="section-header"><span class="section-num">5</span><span class="section-title">Booked by BDR</span></div>
+      <div class="section-desc">How many calls each BDR has booked and how they're converting.</div>
+      <div class="table-wrap"><table><thead><tr>
+        <th>BDR</th><th>Total Booked</th><th>SAL</th><th>DQed</th><th>Declined/No-show</th><th>Scheduled (future)</th><th>Outcome Missing</th><th>SAL Rate</th>
+      </tr></thead><tbody>
+        ${bdrStats.map(b => `<tr>
+          <td><strong>${escapeHtml(b.displayName)}</strong></td>
+          <td class="mono">${b.total}</td>
+          <td class="mono">${b.sal} <span style="color:var(--text-muted);font-size:11px">(${pct(b.sal,b.total)}%)</span></td>
+          <td class="mono">${b.dq} <span style="color:var(--text-muted);font-size:11px">(${pct(b.dq,b.total)}%)</span></td>
+          <td class="mono">${b.ns} <span style="color:var(--text-muted);font-size:11px">(${pct(b.ns,b.total)}%)</span></td>
+          <td class="mono">${b.futSch}</td>
+          <td class="mono ${b.om === bestOM ? 'cell-best' : ''} ${b.om === worstOM && b.om > 0 ? 'cell-worst' : ''}">${b.om}</td>
+          <td class="mono ${b.total > 0 && b.salRate === bestSalRate ? 'cell-best' : ''} ${b.total > 0 && b.salRate === worstSalRate && bdrStats.length > 1 ? 'cell-worst' : ''}">${b.salRate.toFixed(1)}%</td>
+        </tr>`).join('')}
+      </tbody></table></div>
+      <div class="chart-container"><canvas id="bdr-bar-chart" height="250"></canvas></div>
+    </div>`;
+
+    // ===== SECTION 6: STATUS DISTRIBUTION =====
+    // Monthly trend
+    const monthMap = {};
+    data.forEach(d => {
+      if (!d.date) return;
+      const mk = `${d.date.getFullYear()}-${String(d.date.getMonth()+1).padStart(2,'0')}`;
+      if (!monthMap[mk]) monthMap[mk] = { booked: 0, sal: 0, dq: 0, ns: 0, dec: 0 };
+      monthMap[mk].booked++;
+      if (d.status.key === 'sal') monthMap[mk].sal++;
+      if (d.status.key === 'dq') monthMap[mk].dq++;
+      if (d.status.key === 'noshow') monthMap[mk].ns++;
+    });
+    const months = Object.keys(monthMap).sort().reverse();
+
+    html += `<div class="section">
+      <div class="section-header"><span class="section-num">6</span><span class="section-title">How Are Calls Converting?</span></div>
+      <div class="section-desc">Status distribution across all calls, and monthly trend.</div>
+      <div class="chart-row">
+        <div class="chart-box"><h4>Status Distribution</h4><canvas id="donut-chart" height="280"></canvas></div>
+        <div class="chart-box"><h4>Monthly Trend</h4>
+          <div class="table-wrap"><table><thead><tr>
+            <th>Month</th><th>Booked</th><th>SAL</th><th>DQed</th><th>Declined/No-show</th><th>SAL Rate</th>
+          </tr></thead><tbody>
+            ${months.map(mk => {
+              const m = monthMap[mk];
+              const dt = new Date(parseInt(mk.split('-')[0]), parseInt(mk.split('-')[1])-1, 1);
+              return `<tr>
+                <td class="mono">${formatMonthYear(dt)}</td>
+                <td class="mono">${m.booked}</td>
+                <td class="mono">${m.sal}</td>
+                <td class="mono">${m.dq}</td>
+                <td class="mono">${m.ns}</td>
+                <td class="mono">${m.booked > 0 ? (m.sal/m.booked*100).toFixed(1) : 0}%</td>
+              </tr>`;
+            }).join('')}
+          </tbody></table></div>
+        </div>
+      </div>
+    </div>`;
+
+    // ===== FOOTER =====
+    html += `<div class="dash-footer">
+      Data source: Google Sheet (live CSV) &nbsp;·&nbsp; ${totalBooked} rows &nbsp;·&nbsp; ${formatDateShort(minDate)} — ${formatDateShort(maxDate)} &nbsp;·&nbsp; Built ${now.toLocaleDateString('en-IN')} &nbsp;·&nbsp; All BDRs included
+    </div>`;
+
+    // Render
+    dashEl.innerHTML = html;
+    dashEl.style.display = 'block';
+    loadingEl.style.display = 'none';
+
+    // ===== FILTERS FOR ALL CALLS =====
+    const filterBdr = document.getElementById('filter-bdr');
+    const filterStatus = document.getElementById('filter-status');
+    const filterSearch = document.getElementById('filter-search');
+    const filterFrom = document.getElementById('filter-from');
+    const filterTo = document.getElementById('filter-to');
+    const filterReset = document.getElementById('filter-reset');
+    const rowCountEl = document.getElementById('row-count');
+    const allTableContainer = document.getElementById('all-calls-table');
+
+    function applyFilters() {
+      let filtered = [...data];
+      const bv = filterBdr.value;
+      const sv = filterStatus.value;
+      const search = filterSearch.value.toLowerCase().trim();
+      const fromVal = filterFrom.value;
+      const toVal = filterTo.value;
+
+      if (bv) filtered = filtered.filter(d => (d.sdr||'Unknown') === bv);
+      if (sv) filtered = filtered.filter(d => d.displayStatus.label === sv);
+      if (search) filtered = filtered.filter(d =>
+        (d.prospect||'').toLowerCase().includes(search) ||
+        (d.company||'').toLowerCase().includes(search)
+      );
+      if (fromVal) { const fd = new Date(fromVal); filtered = filtered.filter(d => d.date && d.date >= fd); }
+      if (toVal) { const td = new Date(toVal); td.setHours(23,59,59); filtered = filtered.filter(d => d.date && d.date <= td); }
+
+      filtered.sort((a,b) => (b.date||0)-(a.date||0));
+      allTableContainer.innerHTML = filtered.length > 0 ? buildCallTable(filtered, 'table-all-filtered', true) : '<div class="empty-state">No calls match the current filters.</div>';
+      rowCountEl.textContent = `Showing ${filtered.length} of ${data.length} calls`;
+    }
+
+    [filterBdr, filterStatus].forEach(el => el.addEventListener('change', applyFilters));
+    [filterSearch].forEach(el => el.addEventListener('input', applyFilters));
+    [filterFrom, filterTo].forEach(el => el.addEventListener('change', applyFilters));
+    filterReset.addEventListener('click', () => {
+      filterBdr.value = ''; filterStatus.value = ''; filterSearch.value = '';
+      filterFrom.value = ''; filterTo.value = '';
+      applyFilters();
+    });
+
+    // ===== CHARTS =====
+    // BDR Stacked Bar
+    const statusKeys = ['sal','dq','noshow','rescheduled','lto','prequal','scheduled','missing','other'];
+    const statusLabels = {
+      sal:'Sales Accepted', dq:'DQed', noshow:'Declined/No-show',
+      rescheduled:'Rescheduled', lto:'LTO', prequal:'Pre-Qal',
+      scheduled:'Scheduled', missing:'Outcome Missing', other:'Other'
+    };
+    const bdrLabels = bdrStats.map(b => b.displayName);
+    const datasets = statusKeys.map(key => ({
+      label: statusLabels[key],
+      data: bdrStats.map(b => {
+        const rows = data.filter(d => (d.sdr||'Unknown') === b.name);
+        if (key === 'missing') return rows.filter(d => d.outcomeMissing).length;
+        return rows.filter(d => d.status.key === key && !d.outcomeMissing).length;
+      }),
+      backgroundColor: STATUS_COLORS[key]?.fill || '#999',
+      borderWidth: 0,
+      borderRadius: 3,
+    })).filter(ds => ds.data.some(v => v > 0));
+
+    new Chart(document.getElementById('bdr-bar-chart'), {
+      type: 'bar',
+      data: { labels: bdrLabels, datasets },
+      options: {
+        indexAxis: 'y',
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { position: 'bottom', labels: { font: { family: "'DM Sans'", size: 11 }, padding: 14, usePointStyle: true, pointStyle: 'rectRounded' } },
+          datalabels: { display: false }
+        },
+        scales: {
+          x: { stacked: true, grid: { color: '#F3F4F6' }, ticks: { font: { family: "'JetBrains Mono'", size: 11 } } },
+          y: { stacked: true, grid: { display: false }, ticks: { font: { family: "'DM Sans'", size: 12 } } }
+        }
+      }
+    });
+
+    // Donut chart
+    const donutKeys = ['sal','dq','noshow','rescheduled','lto','prequal','scheduled','missing','other'];
+    const donutData = donutKeys.map(key => {
+      if (key === 'missing') return data.filter(d => d.outcomeMissing).length;
+      if (key === 'scheduled') return data.filter(d => d.status.key === 'scheduled' && !d.outcomeMissing).length;
+      return data.filter(d => d.status.key === key).length;
+    });
+    const donutLabels = donutKeys.map(k => statusLabels[k]);
+    const donutColors = donutKeys.map(k => STATUS_COLORS[k]?.fill || '#999');
+
+    // Filter out zero values
+    const filteredDonut = donutKeys.reduce((acc, k, i) => {
+      if (donutData[i] > 0) {
+        acc.labels.push(donutLabels[i]);
+        acc.data.push(donutData[i]);
+        acc.colors.push(donutColors[i]);
+      }
+      return acc;
+    }, { labels: [], data: [], colors: [] });
+
+    new Chart(document.getElementById('donut-chart'), {
+      type: 'doughnut',
+      data: {
+        labels: filteredDonut.labels,
+        datasets: [{ data: filteredDonut.data, backgroundColor: filteredDonut.colors, borderWidth: 2, borderColor: '#fff' }]
+      },
+      plugins: [ChartDataLabels],
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        cutout: '55%',
+        plugins: {
+          legend: { position: 'bottom', labels: { font: { family: "'DM Sans'", size: 11 }, padding: 12, usePointStyle: true, pointStyle: 'rectRounded' } },
+          datalabels: {
+            color: '#111',
+            font: { family: "'JetBrains Mono'", size: 11, weight: 600 },
+            formatter: (value, ctx) => {
+              const total = ctx.dataset.data.reduce((a,b) => a+b, 0);
+              const p = (value/total*100).toFixed(0);
+              return `${value} (${p}%)`;
+            },
+            anchor: 'end',
+            align: 'end',
+            offset: 4,
+          }
+        }
+      }
+    });
+
+  } catch (err) {
+    document.getElementById('loading-screen').style.display = 'none';
+    const errorEl = document.getElementById('error-banner');
+    errorEl.style.display = 'block';
+    errorEl.innerHTML = `<strong>Failed to load data:</strong> ${escapeHtml(err.message)}<br>
+      <span style="font-size:12px">Make sure the Google Sheet is published to web (File → Share → Publish to web) and the CSV link is accessible. Then click Refresh.</span>
+      <br><button class="refresh-btn" style="margin-top:10px" onclick="location.reload()">↻ Try Again</button>`;
+  }
+}
+
+// Init
+loadDashboard();
+</script>
+</body>
+</html>
