@@ -621,15 +621,18 @@ function buildDashboard() {
 }
 
 // ─── TEAM TARGETS ─────────────────────────────────────────────────────────────
-function getQ2Bounds() {
-  // Q2 = Apr 1 – Jun 30 of the current year
-  const yr = new Date().getFullYear();
-  return { start: new Date(yr, 3, 1), end: new Date(yr, 5, 30, 23, 59, 59, 999) };
+function getQ2Year() { return new Date().getFullYear(); }
+
+// Check if a date falls in Q2 (Apr–Jun) of the current year
+// Uses year+month comparison instead of Date object >= to avoid boundary issues
+function isInQ2(dt) {
+  if (!dt || dt === 'error') return false;
+  const yr = getQ2Year();
+  return dt.getFullYear() === yr && dt.getMonth() >= 3 && dt.getMonth() <= 5;
 }
 
 function buildTeamTargets() {
-  const q2 = getQ2Bounds();
-  const q2Rows = ALL_ROWS.filter(r => r.dt && r.dt !== 'error' && r.dt >= q2.start && r.dt <= q2.end);
+  const q2Rows = ALL_ROWS.filter(r => isInQ2(r.dt));
 
   const dcc = q2Rows.filter(r => ['sal','dq','prequal'].includes(r.effectiveStatus.key)).length;
   const sal = q2Rows.filter(r => r.effectiveStatus.key === 'sal').length;
@@ -689,8 +692,7 @@ function buildTeamTargets() {
   document.getElementById('target-attain-block').style.borderWidth = '1.5px';
 
   // Period label
-  const yr = q2.start.getFullYear();
-  document.getElementById('target-period-label').textContent = `Q2 ${yr} · Apr – Jun`;
+  document.getElementById('target-period-label').textContent = `Q2 ${getQ2Year()} · Apr – Jun`;
 
   document.getElementById('target-section').classList.remove('hidden');
 }
@@ -875,7 +877,6 @@ function resetFilters() {
 
 // ─── SECTION 5 ────────────────────────────────────────────────────────────────
 function buildSection5() {
-  const q2 = getQ2Bounds();
   const bdrMap = {};
   ALL_ROWS.forEach(r=>{
     if (!bdrMap[r.displayName]) bdrMap[r.displayName]={name:r.displayName,total:0,sal:0,dq:0,noshow:0,sched:0,missing:0,dcc:0,q2dcc:0,q2sal:0};
@@ -889,7 +890,7 @@ function buildSection5() {
     else if(k==='scheduled')b.sched++;
     else if(k==='missing')b.missing++;
     // Q2 counts
-    if(r.dt&&r.dt!=='error'&&r.dt>=q2.start&&r.dt<=q2.end){
+    if(isInQ2(r.dt)){
       if(['sal','dq','prequal'].includes(k))b.q2dcc++;
       if(k==='sal')b.q2sal++;
     }
