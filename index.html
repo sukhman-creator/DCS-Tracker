@@ -107,6 +107,33 @@ td.mono{font-family:'JetBrains Mono',monospace;font-size:12px}
 .chart-box{height:300px;position:relative}
 .trend-scroll{max-height:340px;overflow-y:auto}
 
+/* Team target section */
+.target-section{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:20px 28px;margin-bottom:20px}
+.target-hdr{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:16px}
+.target-hdr-left{display:flex;align-items:center;gap:10px}
+.target-hdr-title{font-size:16px;font-weight:700}
+.target-period-pill{background:#F3F4F6;border:1px solid var(--border);border-radius:20px;padding:3px 12px;font-size:11px;font-family:'JetBrains Mono',monospace;color:var(--muted)}
+.target-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.target-block{background:#F9F8F6;border:1px solid var(--border);border-radius:10px;padding:14px 18px}
+.target-block-label{font-size:10px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:8px}
+.target-nums{display:flex;align-items:baseline;gap:6px;margin-bottom:10px}
+.target-actual{font-family:'JetBrains Mono',monospace;font-size:28px;font-weight:700;line-height:1}
+.target-of{font-size:13px;color:var(--muted);font-family:'JetBrains Mono',monospace}
+.target-pct-badge{font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;border-radius:20px;padding:2px 9px;margin-left:auto}
+.prog-track{height:10px;background:#E5E7EB;border-radius:99px;overflow:hidden}
+.prog-fill{height:100%;border-radius:99px;transition:width .4s ease}
+.target-sub{font-size:11px;color:var(--muted);font-family:'JetBrains Mono',monospace;margin-top:6px}
+
+/* Per-rep progress bars */
+.rep-progress-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px;margin-top:20px}
+.rep-prog-card{background:#F9F8F6;border:1px solid var(--border);border-radius:10px;padding:12px 16px}
+.rep-prog-name{font-weight:700;font-size:13px;margin-bottom:10px}
+.rep-prog-row{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+.rep-prog-label{font-size:11px;color:var(--muted);width:32px;flex-shrink:0;font-family:'JetBrains Mono',monospace}
+.rep-prog-track{flex:1;height:8px;background:#E5E7EB;border-radius:99px;overflow:hidden}
+.rep-prog-fill{height:100%;border-radius:99px}
+.rep-prog-val{font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;width:40px;text-align:right;flex-shrink:0}
+
 /* Loading / upload screen */
 .loading-screen{min-height:300px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:40px}
 .spinner{width:40px;height:40px;border:3px solid var(--border);border-top-color:var(--today-border);border-radius:50%;animation:spin .8s linear infinite}
@@ -182,6 +209,50 @@ td.mono{font-family:'JetBrains Mono',monospace;font-size:12px}
 
   <!-- Dashboard (hidden until data loads) -->
   <div id="dashboard" class="hidden">
+    <!-- Team Targets -->
+    <div class="target-section hidden" id="target-section">
+      <div class="target-hdr">
+        <div class="target-hdr-left">
+          <span style="font-size:20px">🎯</span>
+          <div class="target-hdr-title">Q2 Team Targets</div>
+          <span class="target-period-pill" id="target-period-label">Apr – Jun 2026</span>
+        </div>
+        <span style="font-size:12px;color:var(--muted)">DCC = Sales Accepted + DQed + Pre-Qal</span>
+      </div>
+      <div class="target-grid" style="grid-template-columns:1fr 1fr 1fr">
+        <div class="target-block" id="target-dcc-block">
+          <div class="target-block-label">DCC — Discovery Calls Completed</div>
+          <div class="target-nums">
+            <span class="target-actual" id="t-dcc-actual" style="color:#6366F1">—</span>
+            <span class="target-of">/ 90</span>
+            <span class="target-pct-badge" id="t-dcc-pct-badge">—</span>
+          </div>
+          <div class="prog-track"><div class="prog-fill" id="t-dcc-bar" style="background:#6366F1;width:0%"></div></div>
+          <div class="target-sub" id="t-dcc-sub">— remaining</div>
+        </div>
+        <div class="target-block" id="target-sal-block">
+          <div class="target-block-label">SAL — Sales Accepted Leads</div>
+          <div class="target-nums">
+            <span class="target-actual" id="t-sal-actual" style="color:#22C55E">—</span>
+            <span class="target-of">/ 60</span>
+            <span class="target-pct-badge" id="t-sal-pct-badge">—</span>
+          </div>
+          <div class="prog-track"><div class="prog-fill" id="t-sal-bar" style="background:#22C55E;width:0%"></div></div>
+          <div class="target-sub" id="t-sal-sub">— remaining</div>
+        </div>
+        <div class="target-block" id="target-attain-block" style="background:#FAFAFA;border-color:#D1D5DB">
+          <div class="target-block-label">Overall Team Attainment <span style="font-weight:400;text-transform:none;letter-spacing:0;font-size:10px">(DCC 50% + SAL 50%)</span></div>
+          <div class="target-nums">
+            <span class="target-actual" id="t-attain-actual" style="color:#111;font-size:32px">—</span>
+            <span class="target-of" style="font-size:16px">%</span>
+            <span class="target-pct-badge" id="t-attain-badge" style="margin-left:auto">—</span>
+          </div>
+          <div class="prog-track" style="height:12px"><div class="prog-fill" id="t-attain-bar" style="background:#111;width:0%"></div></div>
+          <div class="target-sub" id="t-attain-sub">—</div>
+        </div>
+      </div>
+    </div>
+
     <!-- Section 1 -->
     <div class="card" id="sec1">
       <div class="sec-hdr"><div class="sec-num">1</div><div class="sec-title">At a Glance</div></div>
@@ -241,6 +312,11 @@ td.mono{font-family:'JetBrains Mono',monospace;font-size:12px}
         <div style="position:relative" id="bdr-chart-container">
           <canvas id="bdr-chart"></canvas>
         </div>
+      </div>
+      <!-- Per-rep Q2 progress -->
+      <div id="rep-progress-section" style="margin-top:24px">
+        <div style="font-size:13px;font-weight:600;margin-bottom:4px">Q2 Individual Progress <span style="font-weight:400;color:var(--muted);font-size:12px">— Target: 9 DCC · 6 SAL per rep</span></div>
+        <div class="rep-progress-grid" id="rep-progress-grid"></div>
       </div>
     </div>
 
@@ -534,6 +610,7 @@ function buildDashboard() {
   document.getElementById('meta-total').textContent = `${ALL_ROWS.length} calls total`;
   document.getElementById('meta-refresh').textContent = `Last refreshed: ${new Date().toLocaleTimeString()}`;
 
+  buildTeamTargets();
   buildSection1(thisWeek, nextWeek, todayD);
   buildSection2(thisWeek, todayD);
   buildSection3(nextWeek);
@@ -541,6 +618,81 @@ function buildDashboard() {
   buildSection5();
   buildSection6();
   buildFooter(dateRange);
+}
+
+// ─── TEAM TARGETS ─────────────────────────────────────────────────────────────
+function getQ2Bounds() {
+  // Q2 = Apr 1 – Jun 30 of the current year
+  const yr = new Date().getFullYear();
+  return { start: new Date(yr, 3, 1), end: new Date(yr, 5, 30, 23, 59, 59, 999) };
+}
+
+function buildTeamTargets() {
+  const q2 = getQ2Bounds();
+  const q2Rows = ALL_ROWS.filter(r => r.dt && r.dt !== 'error' && r.dt >= q2.start && r.dt <= q2.end);
+
+  const dcc = q2Rows.filter(r => ['sal','dq','prequal'].includes(r.effectiveStatus.key)).length;
+  const sal = q2Rows.filter(r => r.effectiveStatus.key === 'sal').length;
+
+  const DCC_TARGET = 90, SAL_TARGET = 60;
+  const dccPct = Math.min(100, Math.round(dcc / DCC_TARGET * 100));
+  const salPct = Math.min(100, Math.round(sal / SAL_TARGET * 100));
+
+  function pctBadge(p, fill, lightBg) {
+    return `<span class="target-pct-badge" style="background:${lightBg};color:${fill}">${p}%</span>`;
+  }
+
+  document.getElementById('t-dcc-actual').textContent = dcc;
+  document.getElementById('t-dcc-pct-badge').outerHTML = pctBadge(dccPct,'#6366F1','#EEF2FF') +
+    `<span id="t-dcc-pct-badge" style="display:none"></span>`; // replaced below via innerHTML
+  document.getElementById('t-dcc-bar').style.width = dccPct + '%';
+  document.getElementById('t-dcc-sub').textContent = dcc >= DCC_TARGET
+    ? `✅ Target hit!` : `${DCC_TARGET - dcc} remaining to target`;
+
+  document.getElementById('t-sal-actual').textContent = sal;
+  document.getElementById('t-sal-bar').style.width = salPct + '%';
+  document.getElementById('t-sal-sub').textContent = sal >= SAL_TARGET
+    ? `✅ Target hit!` : `${SAL_TARGET - sal} remaining to target`;
+
+  // Render pct badges cleanly via the nums containers
+  const dccNums = document.getElementById('t-dcc-actual').parentElement;
+  const salNums = document.getElementById('t-sal-actual').parentElement;
+
+  // Remove old badge placeholders and re-render
+  dccNums.innerHTML =
+    `<span class="target-actual" style="color:#6366F1">${dcc}</span>` +
+    `<span class="target-of">/ ${DCC_TARGET}</span>` +
+    `<span class="target-pct-badge" style="background:#EEF2FF;color:#6366F1;margin-left:auto">${dccPct}%</span>`;
+
+  salNums.innerHTML =
+    `<span class="target-actual" style="color:#22C55E">${sal}</span>` +
+    `<span class="target-of">/ ${SAL_TARGET}</span>` +
+    `<span class="target-pct-badge" style="background:#DCFCE7;color:#166534;margin-left:auto">${salPct}%</span>`;
+
+  // Overall attainment: 50% DCC weight + 50% SAL weight
+  const attainPct = Math.round((dccPct * 0.5) + (salPct * 0.5));
+  const attainColor = attainPct >= 100 ? '#22C55E' : attainPct >= 75 ? '#6366F1' : attainPct >= 50 ? '#F59E0B' : '#EF4444';
+  const attainBg    = attainPct >= 100 ? '#DCFCE7' : attainPct >= 75 ? '#EEF2FF' : attainPct >= 50 ? '#FEF3C7' : '#FEE2E2';
+  const attainLabel = attainPct >= 100 ? '✅ On target' : attainPct >= 75 ? 'On track' : attainPct >= 50 ? 'Needs push' : 'Behind';
+
+  document.getElementById('t-attain-bar').style.width = Math.min(100, attainPct) + '%';
+  document.getElementById('t-attain-bar').style.background = attainColor;
+  document.getElementById('t-attain-sub').textContent = attainLabel;
+
+  const attainNums = document.getElementById('t-attain-actual').parentElement;
+  attainNums.innerHTML =
+    `<span class="target-actual" style="color:${attainColor};font-size:32px">${attainPct}</span>` +
+    `<span class="target-of" style="font-size:16px">%</span>` +
+    `<span class="target-pct-badge" style="background:${attainBg};color:${attainColor};margin-left:auto">${attainLabel}</span>`;
+
+  document.getElementById('target-attain-block').style.borderColor = attainColor;
+  document.getElementById('target-attain-block').style.borderWidth = '1.5px';
+
+  // Period label
+  const yr = q2.start.getFullYear();
+  document.getElementById('target-period-label').textContent = `Q2 ${yr} · Apr – Jun`;
+
+  document.getElementById('target-section').classList.remove('hidden');
 }
 
 // ─── SECTION 1 ────────────────────────────────────────────────────────────────
@@ -552,10 +704,13 @@ function buildSection1(thisWeek, nextWeek, todayD) {
   const salN=count('sal'),dqN=count('dq'),noshowN=count('noshow'),reschedN=count('rescheduled'),
         ltoN=count('lto'),prequalN=count('prequal'),missN=count('missing'),
         schedFutureN=ALL_ROWS.filter(r=>r.effectiveStatus.key==='scheduled'&&r.dt&&r.dt!=='error'&&r.dt>=todayD).length;
+  // DCC = SAL + DQed + Pre-Qal (completed with a decided outcome)
+  const dccN = salN + dqN + prequalN;
 
   const cards = [
     {label:'Total Booked',     n:total,        fill:'#111111', bcolor:'#111111'},
-    {label:'This Week',        n:thisWkCount,  fill:'#6366F1', bcolor:'#6366F1'},
+    {label:'DCC (Completed)',  n:dccN,         fill:'#6366F1', bcolor:'#6366F1'},
+    {label:'This Week',        n:thisWkCount,  fill:'#6366F1', bcolor:'#64748B'},
     {label:'Next Week',        n:nextWkCount,  fill:'#8B5CF6', bcolor:'#8B5CF6'},
     {label:'Sales Accepted',   n:salN,         fill:'#22C55E', bcolor:'#22C55E'},
     {label:'DQed',             n:dqN,          fill:'#EF4444', bcolor:'#EF4444'},
@@ -720,17 +875,24 @@ function resetFilters() {
 
 // ─── SECTION 5 ────────────────────────────────────────────────────────────────
 function buildSection5() {
+  const q2 = getQ2Bounds();
   const bdrMap = {};
   ALL_ROWS.forEach(r=>{
-    if (!bdrMap[r.displayName]) bdrMap[r.displayName]={name:r.displayName,total:0,sal:0,dq:0,noshow:0,sched:0,missing:0};
+    if (!bdrMap[r.displayName]) bdrMap[r.displayName]={name:r.displayName,total:0,sal:0,dq:0,noshow:0,sched:0,missing:0,dcc:0,q2dcc:0,q2sal:0};
     const b=bdrMap[r.displayName];
     b.total++;
     const k=r.effectiveStatus.key;
-    if(k==='sal')b.sal++;
-    else if(k==='dq')b.dq++;
+    if(k==='sal'){b.sal++;b.dcc++;}
+    else if(k==='dq'){b.dq++;b.dcc++;}
+    else if(k==='prequal')b.dcc++;
     else if(k==='noshow')b.noshow++;
     else if(k==='scheduled')b.sched++;
     else if(k==='missing')b.missing++;
+    // Q2 counts
+    if(r.dt&&r.dt!=='error'&&r.dt>=q2.start&&r.dt<=q2.end){
+      if(['sal','dq','prequal'].includes(k))b.q2dcc++;
+      if(k==='sal')b.q2sal++;
+    }
   });
 
   const bdrs = Object.values(bdrMap).sort((a,b)=>b.total-a.total);
@@ -748,6 +910,7 @@ function buildSection5() {
     return `<tr>
       <td><strong>${esc(b.name)}</strong></td>
       <td class="mono">${b.total}</td>
+      <td class="mono">${b.dcc}</td>
       <td class="mono">${b.sal} <span style="color:var(--muted)">(${pct(b.sal,b.total)})</span></td>
       <td class="mono">${b.dq} <span style="color:var(--muted)">(${pct(b.dq,b.total)})</span></td>
       <td class="mono">${b.noshow} <span style="color:var(--muted)">(${pct(b.noshow,b.total)})</span></td>
@@ -759,7 +922,7 @@ function buildSection5() {
 
   document.getElementById('sec5-table').innerHTML=`<table>
     <thead><tr>
-      <th>BDR</th><th>Total</th><th>SAL</th><th>DQed</th><th>Decl/No-show</th>
+      <th>BDR</th><th>Total</th><th>DCC</th><th>SAL</th><th>DQed</th><th>Decl/No-show</th>
       <th>Sched (future)</th><th>Outcome Missing</th><th>SAL Rate</th>
     </tr></thead>
     <tbody>${rows}</tbody>
@@ -773,9 +936,6 @@ function buildSection5() {
   const bdrCountsByStatus = {};
   STATUS_KEYS.forEach(k=>bdrCountsByStatus[k]=[]);
   bdrs.forEach(b=>{
-    ALL_ROWS.filter(r=>r.displayName===b.name).forEach(r=>{
-      // already counted above, let's count per status
-    });
     const statusCounts = {};
     STATUS_KEYS.forEach(k=>statusCounts[k]=0);
     ALL_ROWS.filter(r=>r.displayName===b.name).forEach(r=>{
@@ -816,6 +976,39 @@ function buildSection5() {
       }
     }
   });
+
+  // Per-rep Q2 progress bars (only reps with ≥1 DCC)
+  const DCC_REP_TARGET = 9, SAL_REP_TARGET = 6;
+  const activeReps = bdrs.filter(b=>b.q2dcc>=1).sort((a,b)=>b.q2dcc-a.q2dcc);
+
+  function progBar(val, target, fillColor) {
+    const p = Math.min(100, Math.round(val/target*100));
+    const overColor = val>=target ? '#22C55E' : fillColor;
+    return `<div class="rep-prog-track"><div class="rep-prog-fill" style="width:${p}%;background:${overColor}"></div></div>`;
+  }
+
+  const repCards = activeReps.map(b=>{
+    const dccPct = Math.min(100,Math.round(b.q2dcc/DCC_REP_TARGET*100));
+    const salPct = Math.min(100,Math.round(b.q2sal/SAL_REP_TARGET*100));
+    const dccHit = b.q2dcc>=DCC_REP_TARGET, salHit = b.q2sal>=SAL_REP_TARGET;
+    return `<div class="rep-prog-card">
+      <div class="rep-prog-name">${esc(b.name)}</div>
+      <div class="rep-prog-row">
+        <span class="rep-prog-label">DCC</span>
+        ${progBar(b.q2dcc,DCC_REP_TARGET,'#6366F1')}
+        <span class="rep-prog-val" style="color:${dccHit?'#22C55E':'#6366F1'}">${b.q2dcc}/${DCC_REP_TARGET}</span>
+      </div>
+      <div class="rep-prog-row">
+        <span class="rep-prog-label">SAL</span>
+        ${progBar(b.q2sal,SAL_REP_TARGET,'#22C55E')}
+        <span class="rep-prog-val" style="color:${salHit?'#22C55E':'#6B7280'}">${b.q2sal}/${SAL_REP_TARGET}</span>
+      </div>
+    </div>`;
+  }).join('');
+
+  document.getElementById('rep-progress-grid').innerHTML = activeReps.length
+    ? repCards
+    : `<div style="color:var(--muted);font-size:13px;padding:10px 0">No Q2 DCC activity yet.</div>`;
 }
 
 // ─── SECTION 6 ────────────────────────────────────────────────────────────────
